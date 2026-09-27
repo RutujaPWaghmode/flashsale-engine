@@ -1,0 +1,16 @@
+MODE=naive: 100 users x 10 rounds (one seat per round, all users at once)
+  winners: 199 (a correct method gives exactly 10)
+  lost (409): 801   errors: 0
+  RESULT: OVERSOLD 10 of 10 seats
+  A01 sold 34x, A02 sold 8x, A03 sold 27x, A04 sold 27x, A05 sold 22x, A06 sold 19x, A07 sold 18x, A08 sold 18x, A09 sold 6x, A10 sold 20x
+
+MODE=atomic: 100 users x 10 rounds (one seat per round, all users at once)
+  winners: 10 (a correct method gives exactly 10)
+  lost (409): 990   errors: 0
+  RESULT: no seat was sold twice
+
+MODE=redis: 100 users x 10 rounds (one seat per round, all users at once)
+  winners: 10 (a correct method gives exactly 10)
+  lost (409): 990   errors: 0
+  RESULT: no seat was sold twice
+

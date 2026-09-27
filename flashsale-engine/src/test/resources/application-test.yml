@@ -1,0 +1,26 @@
+spring:
+  mongodb:
+    uri: mongodb://localhost:27017/flashsale_test?replicaSet=rs0
+  data:
+    redis:
+      database: 1          # keep test keys away from dev keys
+
+app:
+  jwt:
+    secret: dGVzdC1vbmx5LWtleS1kby1ub3QtdXNlLWluLXByb2QtMTIzNA==   # test-only key
+  admin:
+    password: test-admin-password
+  payment:
+    delay: 0ms
+    slow-delay: 0ms
+  rate-limit:
+    per-user-per-second: 1000
+  auth:
+    registrations-per-ip-per-hour: 100000
+    failed-logins-per-ip-per-minute: 100000
+  outbox:
+    poll-interval-ms: 50
+  kafka:
+    partitions: 1
+  reconciliation:
+    initial-delay-ms: 600000   # tests trigger reconciliation explicitly

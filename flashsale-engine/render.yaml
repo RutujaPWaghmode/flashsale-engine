@@ -1,0 +1,62 @@
+# Render Blueprint: in the Render dashboard choose New > Blueprint and pick this repository.
+# Values marked "sync: false" are secrets: Render asks for them once and they never live in the repo.
+# MongoDB (Atlas), Kafka and SMTP (Brevo) are outside Render; Redis is Render Key Value.
+services:
+  - type: web
+    name: flashsale-engine
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: JWT_SECRET                      # base64, e.g. from: openssl rand -base64 32
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SPRING_MONGODB_URI              # Atlas: mongodb+srv://user:pass@cluster.../flashsale
+        sync: false
+      - key: SPRING_DATA_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: flashsale-redis
+          property: connectionString
+      # Kafka: address, login and topic replication factor come from the Kafka provider
+      - key: SPRING_KAFKA_BOOTSTRAP_SERVERS
+        sync: false
+      - key: SPRING_KAFKA_SECURITY_PROTOCOL
+        value: SASL_SSL
+      - key: SPRING_KAFKA_PROPERTIES_SASL_MECHANISM
+        value: PLAIN
+      - key: SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG   # org.apache.kafka.common.security.plain.PlainLoginModule required username="..." password="...";
+        sync: false
+      - key: APP_KAFKA_REPLICAS
+        value: "3"
+      # Email (Brevo SMTP)
+      - key: SMTP_HOST
+        value: smtp-relay.brevo.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_AUTH
+        value: "true"
+      - key: SMTP_STARTTLS
+        value: "true"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: APP_MAIL_FROM                   # must be a sender verified in Brevo
+        sync: false
+      - key: APP_MAIL_APPURL                 # public link used in emails, e.g. https://flashsale-engine.onrender.com
+        sync: false
+      # Behind Render's HTTPS proxy
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: FORWARD_HEADERS_STRATEGY
+        value: framework
+
+  - type: keyvalue
+    name: flashsale-redis
+    plan: free
+    region: singapore
+    maxmemoryPolicy: volatile-ttl
+    ipAllowList: []                          # reachable only from Render services, not the internet

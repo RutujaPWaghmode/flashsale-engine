@@ -1,0 +1,94 @@
+### Example requests. Open in VS Code with the "REST Client" extension and click "Send Request".
+@base = http://localhost:8080
+
+### Register a user
+POST {{base}}/api/auth/register
+Content-Type: application/json
+
+{ "username": "alice", "password": "secret123", "email": "alice@example.com" }
+
+### Log in and keep the token
+# @name login
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "alice", "password": "secret123" }
+
+### Calendar feed (public)
+GET {{base}}/api/events
+
+### Events in October 2026
+GET {{base}}/api/events?from=2026-10-01T00:00:00Z&to=2026-11-01T00:00:00Z
+
+### Event and seat map (public)
+GET {{base}}/api/events/1
+
+###
+GET {{base}}/api/events/1/seats
+
+### Hold a seat. Send it twice with the same Idempotency-Key: the second returns DUPLICATE.
+# @name hold
+POST {{base}}/api/bookings
+Authorization: Bearer {{login.response.body.token}}
+Idempotency-Key: demo-key-1
+Content-Type: application/json
+
+{ "eventId": 1, "seatNo": "A01" }
+
+### Pay (outcome: SUCCESS | DECLINE | SLOW | RANDOM). Returns 202; the result arrives through Kafka.
+POST {{base}}/api/bookings/{{hold.response.body.booking.id}}/pay
+Authorization: Bearer {{login.response.body.token}}
+Content-Type: application/json
+
+{ "outcome": "SUCCESS" }
+
+### Booking status (poll until CONFIRMED / FAILED)
+GET {{base}}/api/bookings/{{hold.response.body.booking.id}}
+Authorization: Bearer {{login.response.body.token}}
+
+### My bookings for the event
+GET {{base}}/api/bookings?eventId=1
+Authorization: Bearer {{login.response.body.token}}
+
+### Release a held seat
+POST {{base}}/api/bookings/{{hold.response.body.booking.id}}/cancel
+Authorization: Bearer {{login.response.body.token}}
+
+### DB-only baselines (for benchmarks)
+POST {{base}}/api/baseline/bookings/atomic
+Authorization: Bearer {{login.response.body.token}}
+Content-Type: application/json
+
+{ "eventId": 1, "seatNo": "J10" }
+
+### Admin: log in (password is ADMIN_PASSWORD in .env)
+# @name admin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "admin", "password": "PASTE_FROM_.env" }
+
+### Admin: create an event
+POST {{base}}/api/admin/events
+Authorization: Bearer {{admin.response.body.token}}
+Content-Type: application/json
+
+{ "name": "Rock Night", "venue": "Open Air Arena", "startTime": "2026-11-20T14:30:00Z", "rows": 8, "seatsPerRow": 12, "price": 1199 }
+
+### Admin: send reminder emails now (see http://localhost:8025)
+POST {{base}}/api/admin/events/1/remind
+Authorization: Bearer {{admin.response.body.token}}
+
+### Admin: reset the event
+POST {{base}}/api/admin/events/1/reset
+Authorization: Bearer {{admin.response.body.token}}
+
+### Admin: run reconciliation now
+POST {{base}}/api/admin/events/1/reconcile
+Authorization: Bearer {{admin.response.body.token}}
+
+### Health and metrics
+GET {{base}}/actuator/health
+
+###
+GET {{base}}/actuator/prometheus

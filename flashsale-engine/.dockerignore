@@ -1,0 +1,11 @@
+# Keep secrets and local build output out of the image
+.env
+.git
+target
+app.log
+benchmarks
+load
+observability
+docs
+.vscode
+.idea

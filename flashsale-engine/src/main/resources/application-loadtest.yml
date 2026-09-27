@@ -1,0 +1,10 @@
+# Run the app with this profile for k6 load tests:  ./mvnw spring-boot:run -Dspring-boot.run.profiles=loadtest
+# k6 creates hundreds of users from one IP and fires thousands of requests per second, which the normal
+# sign-up and per-user limits would (rightly) block. The limiter still runs on every request, so its Redis
+# cost stays in the numbers; it just no longer rejects.
+app:
+  auth:
+    registrations-per-ip-per-hour: 100000
+    failed-logins-per-ip-per-minute: 100000
+  rate-limit:
+    per-user-per-second: 100000

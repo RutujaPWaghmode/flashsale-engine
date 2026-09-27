@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FlashSale Tickets</title>
+  <meta name="description" content="Flash-sale ticket booking demo: live seat map, holds, payments and saga compensation.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V7Z"/><path class="brand-cut" d="M14 5v14"/></svg>
+      <span>FlashSale</span>
+    </div>
+    <div class="topbar-right">
+      <span id="live" class="live" data-state="connecting" title="Live seat updates">
+        <span class="live-dot"></span><span class="live-text">Connecting…</span>
+      </span>
+      <div id="auth-area"></div>
+    </div>
+  </header>
+
+  <div id="verify-banner" class="verify-banner" role="status" hidden>
+    <span>Confirm your email address (<strong id="verify-email"></strong>) to get your tickets by email.</span>
+    <button class="btn small" type="button" id="btn-resend">Resend link</button>
+  </div>
+
+  <main class="page">
+    <section class="card calendar-card" aria-labelledby="calendar-title">
+      <div class="calendar">
+        <div class="calendar-head">
+          <h2 id="calendar-title">Calendar</h2>
+          <div class="calendar-nav">
+            <button class="icon-btn" type="button" id="cal-prev" aria-label="Previous month">‹</button>
+            <span id="cal-month" class="cal-month" aria-live="polite"></span>
+            <button class="icon-btn" type="button" id="cal-next" aria-label="Next month">›</button>
+            <button class="btn ghost small" type="button" id="cal-today">Today</button>
+          </div>
+        </div>
+        <div class="cal-weekdays" aria-hidden="true">
+          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+        </div>
+        <div id="cal-grid" class="cal-grid"></div>
+      </div>
+      <div class="upcoming">
+        <h2>Upcoming events</h2>
+        <ul id="upcoming" class="upcoming-list"></ul>
+      </div>
+    </section>
+
+    <section class="event" aria-labelledby="event-name">
+      <div class="event-info">
+        <p class="eyebrow" id="event-meta">Loading event…</p>
+        <h1 id="event-name">&nbsp;</h1>
+        <p class="price"><span id="event-price">&nbsp;</span> <span class="muted">per seat · max <span id="max-seats">4</span> per person</span></p>
+        <p class="ended" id="event-ended" hidden>Sales have closed: this event has already started.</p>
+      </div>
+      <div class="stats" aria-live="polite">
+        <div class="stat"><span class="stat-value" id="stat-available">–</span><span class="stat-label">Available</span></div>
+        <div class="stat"><span class="stat-value" id="stat-held">–</span><span class="stat-label">On hold</span></div>
+        <div class="stat"><span class="stat-value" id="stat-booked">–</span><span class="stat-label">Sold</span></div>
+        <div class="progress" role="progressbar" aria-label="Seats sold" aria-valuemin="0" aria-valuemax="100" id="progress">
+          <span class="progress-held" id="progress-held"></span><span class="progress-sold" id="progress-sold"></span>
+        </div>
+      </div>
+    </section>
+
+    <div class="layout">
+      <section class="card seatmap-card" aria-labelledby="seatmap-title">
+        <div class="card-head">
+          <h2 id="seatmap-title">Choose your seats</h2>
+          <p class="muted small">A seat is held for 5 minutes while you pay.</p>
+        </div>
+        <div class="stage">Stage</div>
+        <div class="seatmap-scroll">
+          <div id="seatmap" class="seatmap" role="grid" aria-label="Seat map"></div>
+        </div>
+        <ul class="legend" aria-label="Legend">
+          <li><span class="swatch available"></span>Available</li>
+          <li><span class="swatch held"></span>On hold</li>
+          <li><span class="swatch sold"></span>Sold</li>
+          <li><span class="swatch mine"></span>Your hold</li>
+          <li><span class="swatch mine-sold"></span>Yours</li>
+        </ul>
+      </section>
+
+      <aside class="side">
+        <section class="card" aria-labelledby="mine-title">
+          <div class="card-head">
+            <h2 id="mine-title">Your seats</h2>
+          </div>
+          <div id="mine" class="mine">
+            <p class="empty">Sign in and pick a seat to start.</p>
+          </div>
+        </section>
+
+        <section class="card admin" id="admin" hidden aria-labelledby="admin-title">
+          <div class="card-head">
+            <h2 id="admin-title">Admin</h2>
+            <p class="muted small">Demo and load-test tools.</p>
+          </div>
+          <div class="admin-actions">
+            <button class="btn" id="btn-reconcile" type="button">Run reconciliation</button>
+            <button class="btn" id="btn-remind" type="button">Send reminders now</button>
+            <button class="btn danger" id="btn-reset" type="button">Reset event</button>
+          </div>
+          <details class="create-event">
+            <summary>Create an event</summary>
+            <form id="create-form" class="create-form" novalidate>
+              <label class="field"><span>Name</span><input name="name" required maxlength="100"></label>
+              <label class="field"><span>Venue</span><input name="venue" required maxlength="100"></label>
+              <label class="field"><span>Starts</span><input name="startTime" type="datetime-local" required></label>
+              <div class="field-row">
+                <label class="field"><span>Rows</span><input name="rows" type="number" min="1" max="26" value="8" required></label>
+                <label class="field"><span>Seats / row</span><input name="seatsPerRow" type="number" min="1" max="20" value="10" required></label>
+                <label class="field"><span>Price (₹)</span><input name="price" type="number" min="1" step="1" value="999" required></label>
+              </div>
+              <p class="form-error" id="create-error" role="alert" hidden></p>
+              <button class="btn primary" type="submit">Create event</button>
+            </form>
+          </details>
+        </section>
+
+        <section class="card how" aria-labelledby="how-title">
+          <h2 id="how-title">What happens behind the scenes</h2>
+          <ol>
+            <li><strong>Hold:</strong> a Redis Lua script grabs the seat atomically, with a 5-minute TTL.</li>
+            <li><strong>Pay:</strong> the booking and a payment request are written in one MongoDB transaction (outbox), then sent over Kafka.</li>
+            <li><strong>Confirm or compensate:</strong> a success sells the seat; a decline releases it; a late payment is refunded.</li>
+            <li><strong>Live:</strong> every change is pushed to all browsers over WebSocket.</li>
+            <li><strong>Email:</strong> a notification service on Kafka sends your ticket (with a calendar invite), declines, refunds and a reminder the day before.</li>
+          </ol>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <dialog id="auth-dialog" class="dialog" aria-labelledby="auth-title">
+    <form id="auth-form" method="dialog" novalidate>
+      <div class="dialog-head">
+        <h2 id="auth-title">Sign in</h2>
+        <button class="icon-btn" type="button" id="auth-close" aria-label="Close">×</button>
+      </div>
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" class="tab" data-mode="login" aria-selected="true">Sign in</button>
+        <button type="button" role="tab" class="tab" data-mode="register" aria-selected="false">Create account</button>
+      </div>
+      <label class="field">
+        <span>Username</span>
+        <input name="username" autocomplete="username" required maxlength="32" autocapitalize="none" spellcheck="false">
+      </label>
+      <label class="field" id="email-field" hidden>
+        <span>Email <small class="hint">(for your tickets)</small></span>
+        <input name="email" type="email" autocomplete="email" maxlength="254">
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input name="password" type="password" autocomplete="current-password" required maxlength="128">
+        <small class="hint" id="password-hint" hidden>At least 8 characters, with a letter and a number.</small>
+      </label>
+      <p class="form-error" id="auth-error" role="alert" hidden></p>
+      <button class="btn primary block" type="submit" id="auth-submit">Sign in</button>
+    </form>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script src="/assets/app.js" type="module"></script>
+</body>
+</html>
